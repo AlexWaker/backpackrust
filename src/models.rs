@@ -89,3 +89,12 @@ pub enum BotError {
     #[error("Strategy error: {0}")]
     StrategyError(String),
 }
+
+
+//... (文件末尾)
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAccountRequest<'a> {
+    pub leverage_limit: &'a str, // [cite: 859]
+}

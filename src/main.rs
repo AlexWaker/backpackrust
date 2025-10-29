@@ -23,6 +23,14 @@ async fn main() -> anyhow::Result<()> {
     let api_client = ApiClient::new(authenticator.clone());
     println!("API Client initialized.");
 
+    println!("Setting account leverage to 1.0...");
+    if let Err(e) = api_client.set_leverage("1.0").await {
+        eprintln!("CRITICAL: Failed to set leverage to 1.0x: {}. Exiting.", e);
+        // 如果无法设置杠杆，程序应该退出以保证安全
+        return Err(e.into());
+    }
+    println!("Account leverage successfully set to 1.0.");
+
     // 4. 创建 channels 用于 WS 和 Strategy 间通信
     // watch 用于 "最新价格"
     let (price_tx, price_rx) = watch::channel::<Option<BookTickerData>>(None);
