@@ -1,9 +1,13 @@
 ## backpackrust
 
 一个使用 Rust 编写的 Backpack Exchange 示例交易机器人/客户端，用于backpack刷分：
-- 该程序用于且仅用于Backpack刷分！本策略几乎不会有任何盈利！我也不相信散户个人量化能长期赚到钱！
-- 逻辑非常简单：以当前卖一价格开空，等订单完成立刻以买一价格开多单，基本上都会成交
-- 量化开单挂单的速度远远超过人手，而且对行情的反应也更快
+- 该程序用于且仅用于Backpack刷分！本策略几乎不会有什么盈利，但也几乎不会有什么亏损！我也不相信散户个人量化能长期赚到钱！
+- 逻辑非常简单：以当前卖一价格开空，等订单完成立刻以买一价格开多单，基本上都会成交。
+- 量化开单挂单的速度远远超过人手挂单，而且对行情的反应也更快。手机上价格没变不代表实际价格没有波动，手机行情的延迟很高的。
+- 合约的手续费远低于现货，建议刷合约，配合Solana Seeker手机1000U手续费返现，基本可以做到无损拿积分。
+
+Backpack交易费率：
+![手续费](./img/4807241eed41c00df501defbc287b36e.jpg)
 
 当前默认交易标的为 `SOL_USDC_PERP`，程序会：
 1) 启动即将账户杠杆设置为 1.0（失败则退出）；
@@ -28,22 +32,9 @@ backpackrust/
 		 └─ strategy.rs        # 简单示例策略：先开空再开多
 ```
 
-## 环境要求
-
-- Rust 工具链（建议使用最新 stable，支持 Rust 2024 edition）
-- Linux 运行时依赖（默认使用 OpenSSL）：
-	- Debian/Ubuntu：需要 `pkg-config` 与 `libssl-dev`
-
-如果你不想安装系统 OpenSSL，可改用 rustls，见下方「不使用 OpenSSL 的可选方案」。
-
 ## 安装与构建
 
-在 Debian/Ubuntu 上，先安装依赖：
-
-```bash
-sudo apt-get update
-sudo apt-get install -y pkg-config libssl-dev
-```
+请先安装Rust最新版
 
 构建：
 
@@ -57,18 +48,7 @@ cargo build
 cargo run
 ```
 
-首次运行前请先准备 `.env`（见下章）。
-
-### 不使用 OpenSSL 的可选方案（rustls）
-
-如果希望避免系统 OpenSSL 依赖，可在 `Cargo.toml` 中改为 rustls：
-
-```toml
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-tokio-tungstenite = { version = "0.23", features = ["rustls-tls-native-roots"] }
-```
-
-然后重新 `cargo build` 即可。
+首次运行前请先准备 `.env`。
 
 ## 配置（.env）
 
@@ -83,88 +63,12 @@ BP_API_KEY=你的API_KEY_BASE64
 BP_API_SECRET=你的API_SECRET_BASE64
 ```
 
-加载逻辑位于 `main.rs` 中：程序启动会自动 `dotenv::dotenv().ok()`。
+请去交易所注册API：https://support.backpack.exchange/support-docs/cn/jiao-yi-suo-1/zhang-hu-gong-neng/sheng-cheng-backpack-jiao-yi-suo-api-mi-yao
 
-## 运行流程与策略说明
+## 修改数量
 
-- 程序启动：
-	- 加载环境变量，初始化 `Authenticator` 与 `ApiClient`；
-	- 通过 REST 将账户杠杆设置为 1.0（`PATCH /api/v1/account`），失败则直接退出；
-	- 并发启动 WS 订阅与策略任务，通过 `watch`/`broadcast` 通道通信。
+在strategy.rs文件中，这两行代码可以修改交易对和数量。如果纯粹从刷交易的角度，还是直接刷solana比较合适
 
-- WebSocket：
-	- 连接 `wss://ws.backpack.exchange/`；
-	- 订阅公共频道：`bookTicker.SOL_USDC_PERP`；
-	- 订阅私有频道：`account.orderUpdate`，需要签名参数 `[apiKeyB64, signatureB64, timestamp, window]`；
-	- 将最新的 `bookTicker` 推送写入 `watch` 通道，将订单变更广播到 `broadcast` 通道。
+const MARKET_SYMBOL: &str = "SOL_USDC_PERP";
 
-- 策略任务（示例）：
-	- 等第一条 `bookTicker` 到达；
-	- 以卖一价下空单（限价、PostOnly、数量 `2.0`）；
-	- 若未立即完全成交，则通过 `orderUpdate` 监听直到状态为 `Filled`；
-	- 再以买一价下多单（限价、PostOnly、数量 `2.0`），打印订单 ID 后结束。
-
-提示：默认交易标的常量 `MARKET_SYMBOL` 在 `ws.rs` 与 `strategy.rs` 中各定义了一份（均为 `SOL_USDC_PERP`）。若需更改标的，请在两处同步修改。
-
-## REST/WS 交互要点
-
-### REST
-
-- Base URL: `https://api.backpack.exchange`
-- 设置杠杆（`PATCH /api/v1/account`）：
-	- instruction: `accountUpdate`
-	- Body（JSON）：`{ "leverageLimit": "1.0" }`
-
-- 下单（`POST /api/v1/order`）：
-	- instruction: `orderExecute`
-	- Body（JSON）：
-		```json
-		{
-			"symbol": "SOL_USDC_PERP",
-			"side": "Bid" | "Ask",
-			"orderType": "Limit",
-			"quantity": "2.0",
-			"price": "价格字符串",
-			"postOnly": true
-		}
-		```
-
-- 签名头（`auth.rs::generate_rest_headers`）：
-	- 计算字符串：`instruction=...&<body_kv_sorted>&timestamp=...&window=...`
-	- 使用 Ed25519 对上述字符串签名，Base64 编码为 `X-Signature`
-	- 附带头：`X-API-Key`, `X-Timestamp`, `X-Window`, `Content-Type`
-
-### WebSocket
-
-- URL: `wss://ws.backpack.exchange/`
-- 公共订阅：`{"method":"SUBSCRIBE","params":["bookTicker.SOL_USDC_PERP"]}`
-- 私有订阅：`{"method":"SUBSCRIBE","params":["account.orderUpdate"],"signature":[apiKeyB64, signatureB64, timestamp, window]}`
-- WS 签名字符串：`instruction=subscribe&timestamp=...&window=...`
-
-## 常见问题（FAQ）
-
-- 报错「OpenSSL not found / cannot find -lssl」
-	- 请先安装 `pkg-config libssl-dev`，或改用上文的 rustls 方案。
-
-- 认证失败（401/403）或签名不通过
-	- 请检查 `.env` 中的 `BP_API_KEY/BP_API_SECRET` 是否为 Base64 编码；
-	- `BP_API_SECRET` 必须是 32 字节 Ed25519 私钥的 Base64 编码；
-	- 机器时间必须准确（`X-Timestamp` 与 `X-Window` 受限）。
-
-- 订阅不到私有订单流
-	- 请确认 WS 订阅时携带的 `signature` 数组顺序与内容正确；
-	- 确认账户、API 权限与环境（实盘/测试）一致。
-
-## 开发与调试
-
-- 日志：当前主要使用 `println!` 输出，你可以引入 `tracing` 进行结构化日志。
-- 并发：WS 与策略分别在 Tokio 任务中运行，通过 `watch` 与 `broadcast` 传递数据。
-- 代码入口：`src/main.rs`
-
-## 许可
-
-本仓库未包含 LICENSE 文件，如需开源发布请补充相应许可证。
-
-## 免责声明
-
-本项目仅为示例代码，不保证适用于任何实盘环境。数字资产交易存在高风险，请自行评估并承担后果。
+const ORDER_QUANTITY: &str = "2.0"; // 2 SOL
