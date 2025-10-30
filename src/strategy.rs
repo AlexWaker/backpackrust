@@ -2,8 +2,8 @@ use crate::models::{BookTickerData, OrderRequest, OrderUpdateData};
 use crate::rest::ApiClient;
 use tokio::sync::{broadcast, watch};
 
-const MARKET_SYMBOL: &str = "SOL_USDC_PERP";
-const ORDER_QUANTITY: &str = "2.0"; // 2 SOL
+const MARKET_SYMBOL: &str = "APT_USDC_PERP";
+const ORDER_QUANTITY: &str = "100.0"; // 2 SOL
 
 pub async fn run_strategy(
     api_client: ApiClient,

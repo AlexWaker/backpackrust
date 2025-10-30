@@ -7,7 +7,7 @@ use tokio::sync::{broadcast, watch};
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 
 const WS_URL: &str = "wss://ws.backpack.exchange/"; // [cite: 8]
-const MARKET_SYMBOL: &str = "SOL_USDC_PERP";
+const MARKET_SYMBOL: &str = "APT_USDC_PERP";
 
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
