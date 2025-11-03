@@ -23,6 +23,7 @@ async fn main() -> anyhow::Result<()> {
     let api_client = ApiClient::new(authenticator.clone());
     println!("API Client initialized.");
 
+    // 设置账户杠杆为固定值 1.0（硬编码，不从 .env 读取）
     println!("Setting account leverage to 1.0...");
     if let Err(e) = api_client.set_leverage("1.0").await {
         eprintln!("CRITICAL: Failed to set leverage to 1.0x: {}. Exiting.", e);
@@ -30,25 +31,28 @@ async fn main() -> anyhow::Result<()> {
         return Err(e.into());
     }
     println!("Account leverage successfully set to 1.0.");
-
-    // 4. 创建 channels 用于 WS 和 Strategy 间通信
-    // watch 用于 "最新价格"
+// 4. 创建 channels 用于 WS 和 Strategy 间通信
     let (price_tx, price_rx) = watch::channel::<Option<BookTickerData>>(None);
-    // broadcast 用于 "订单更新"
     let (order_tx, _) = broadcast::channel::<OrderUpdateData>(32);
+
+    // --- ↓↓↓ 这是你需要的修复 ↓↓↓ ---
+    // 创建一个虚拟接收者，以防止通道在没有监听者时关闭。
+    // 只要 main 函数在 select! 处阻塞，_dummy_order_rx 就会保持存活。
+    let _dummy_order_rx = order_tx.subscribe();
+    // --- ↑↑↑ 修复结束 ↑↑↑ ---
 
     // 5. 启动 WebSocket 任务
     let ws_task = tokio::spawn(ws::run_websocket(
         authenticator,
         price_tx,
-        order_tx.clone(),
+        order_tx.clone(), // ws_task 获得一个 sender
     ));
 
     // 6. 启动策略任务
     let strategy_task = tokio::spawn(strategy::run_strategy(
         api_client,
         price_rx,
-        order_tx,
+        order_tx, // strategy_task 获得另一个 sender (用于 subscribe)
     ));
 
     // 7. 等待任务完成

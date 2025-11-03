@@ -57,6 +57,8 @@ pub struct OrderRequest<'a> {
     pub quantity: &'a str,
     pub price: &'a str,
     pub post_only: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reduce_only: Option<bool>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -97,4 +99,22 @@ pub enum BotError {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateAccountRequest<'a> {
     pub leverage_limit: &'a str, // [cite: 859]
+}
+
+// ... (在 UpdateAccountRequest 之后)
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CancelRequest<'a> {
+    pub symbol: &'a str,
+    pub order_id: &'a str,
+}
+
+// [新代码] 添加到 models.rs
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct PositionResponse {
+    pub symbol: String,
+    pub quantity: String, // 例如 "100.0"
+    pub side: String,     // "Ask" (空单) 或 "Bid" (多单)
 }

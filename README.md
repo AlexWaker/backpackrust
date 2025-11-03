@@ -11,9 +11,9 @@
 Backpack交易费率：
 ![手续费](./img/4807241eed41c00df501defbc287b36e.jpg)
 
-当前默认交易标的为 `SOL_USDC_PERP`，程序会：
+程序会：
 1) 启动即将账户杠杆设置为 1.0（失败则退出）；
-2) 订阅 `bookTicker.SOL_USDC_PERP` 与私有 `account.orderUpdate`；
+2) 订阅 `bookTicker.APT_USDC_PERP` 与私有 `account.orderUpdate`；
 3) 等到第一条行情后，以卖一价下「限价 PostOnly 空单」2 SOL；
 4) 等该空单完全成交后，再以买一价下「限价 PostOnly 多单」2 SOL；
 5) 打印关键日志并结束。
@@ -54,7 +54,7 @@ cargo run
 
 ## 配置（.env）
 
-项目使用以下环境变量（在根目录创建 `.env` 文件）：
+项目使用以下环境变量（在根目录创建 `.env` 文件，必填）：
 
 ```dotenv
 # Base64 编码的公钥（交易所提供的 API Key）
@@ -63,14 +63,19 @@ BP_API_KEY=你的API_KEY_BASE64
 # Base64 编码的 32 字节 Ed25519 私钥（交易所提供的 API Secret）
 # 注意：必须是 32 字节原始私钥的 Base64 编码
 BP_API_SECRET=你的API_SECRET_BASE64
+
 ```
 
 请去交易所注册API：https://support.backpack.exchange/support-docs/cn/jiao-yi-suo-1/zhang-hu-gong-neng/sheng-cheng-backpack-jiao-yi-suo-api-mi-yao
 
-## 修改数量
+## 超参数说明（硬编码）
 
-在strategy.rs文件中，这两行代码可以修改交易对和数量。如果纯粹从刷交易的角度，还是直接刷solana比较合适
+以下参数直接写在代码里，如需修改，请编辑对应文件并重新构建：
 
-const MARKET_SYMBOL: &str = "SOL_USDC_PERP";
-
-const ORDER_QUANTITY: &str = "2.0"; // 2 SOL
+- 交易对（ws 订阅）：`src/ws.rs` 中 `const MARKET_SYMBOL`
+- 策略参数：`src/strategy.rs` 中的
+  - `const MARKET_SYMBOL`
+  - `const ORDER_QUANTITY`
+  - `const SHORT_ORDER_TIMEOUT_SECS`
+  - `const CYCLE_COOLDOWN_SECS`
+- 启动时设置的账户杠杆：`src/main.rs` 中传入的 `"1.0"`

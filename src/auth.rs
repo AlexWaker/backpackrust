@@ -4,7 +4,9 @@ use ed25519_dalek::{Signature, Signer, SigningKey};
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-const DEFAULT_WINDOW: i64 = 5000; // 默认 5000ms 窗口 [cite: 15]
+// 固定签名窗口毫秒数（不从 .env 读取）
+const DEFAULT_WINDOW: i64 = 5000;
+fn get_window_ms() -> i64 { DEFAULT_WINDOW }
 
 #[derive(Clone)]
 pub struct Authenticator {
@@ -44,8 +46,8 @@ pub fn generate_rest_headers(
         instruction: &str,
         body: &str,
     ) -> Result<reqwest::header::HeaderMap, BotError> {
-        let timestamp = Self::get_timestamp();
-        let window = DEFAULT_WINDOW;
+    let timestamp = Self::get_timestamp();
+    let window = get_window_ms();
 
         // 1. 将 body JSON 字符串解析为 BTreeMap 以自动按字母排序
         let body_params: BTreeMap<String, serde_json::Value> = serde_json::from_str(body)?;
@@ -109,8 +111,8 @@ pub fn generate_rest_headers(
 
     /// 为 WebSocket 订阅生成签名
     pub fn generate_ws_signature(&self) -> Result<Vec<String>, BotError> {
-        let timestamp = Self::get_timestamp();
-        let window = DEFAULT_WINDOW;
+    let timestamp = Self::get_timestamp();
+    let window = get_window_ms();
 
         // WS 订阅的指令是 "subscribe" [cite: 199]
         let signable_payload = format!(
