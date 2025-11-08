@@ -1,38 +1,16 @@
 ## backpackrust
 
 一个使用 Rust 编写的 Backpack Exchange 示例交易机器人/客户端，用于backpack刷分：
-- 该程序用于且仅用于Backpack刷分！本策略几乎不会有什么盈利，但也几乎不会有什么亏损！我也不相信散户个人量化能长期赚到钱！
-- 逻辑非常简单：以当前卖一价格开空，等订单完成立刻以买一价格开多单，基本上都会成交。
-- 量化开单挂单的速度远远超过人手挂单，而且对行情的反应也更快。手机上价格没变不代表实际价格没有波动，手机行情的延迟很高的。
-- 合约的手续费远低于现货，建议刷合约，配合Solana Seeker手机1000U手续费返现，基本可以做到无损拿积分。
-- 脚本并非纯自动交易！！需要人盯着，如果挂单之后价格迅速变动导致无法成交，则需要手动在手机上取消挂单，然后Ctrl+Z取消程序运行，然后再次执行。
+- 一个非常简单的网格策略，很鲁棒，纯刷分就够用，一天24小时连轴转不断线无压力
+- 几秒钟（时间可以自己设置）就在买一卖一同时挂空和多，最多180条open orders（交易所限制是200条，这个可以自己设置）
+- 根根据我亏钱经验：刷大交易对（BTC SOL这种）基本能做到不亏钱，甚至能赚回手续费。刷小币（高波动）亏得很惨！我刷APT和SOL能赚点，但是刷ZRO亏死了。
 - 建议用日本服务器运行，一是防止出现网络问题，二是backpack服务器在日本，用日本服务器可以减少地理延时
 
 Backpack交易费率：
 ![手续费](./img/4807241eed41c00df501defbc287b36e.jpg)
 
-程序会：
-1) 启动即将账户杠杆设置为 1.0（失败则退出）；
-2) 订阅 `bookTicker.APT_USDC_PERP` 与私有 `account.orderUpdate`；
-3) 等到第一条行情后，以卖一价下「限价 PostOnly 空单」2 SOL；
-4) 等该空单完全成交后，再以买一价下「限价 PostOnly 多单」2 SOL；
-5) 打印关键日志并结束。
 
-警告：该仓库仅用于学习与集成示例，请在测试环境或极小仓位下使用。策略逻辑非常基础，不构成任何投资建议。
-
-## 目录结构
-
-```
-backpackrust/
-	├─ Cargo.toml            # 依赖与编译配置（edition=2024）
-	└─ src/
-		 ├─ main.rs            # 程序入口：加载环境、初始化组件、并发启动 WS 和策略
-		 ├─ auth.rs            # Ed25519 签名；生成 REST/WS 所需签名与头部
-		 ├─ rest.rs            # REST 客户端：设置杠杆、下单
-		 ├─ ws.rs              # WebSocket 客户端：订阅 bookTicker 与 account.orderUpdate
-		 ├─ models.rs          # 数据结构与错误类型
-		 └─ strategy.rs        # 简单示例策略：先开空再开多
-```
+警告：该仓库仅用于刷分，请在测试环境或极小仓位下使用。策略逻辑非常基础，不构成任何投资建议。
 
 ## 安装与构建
 
@@ -54,28 +32,7 @@ cargo run
 
 ## 配置（.env）
 
-项目使用以下环境变量（在根目录创建 `.env` 文件，必填）：
-
-```dotenv
-# Base64 编码的公钥（交易所提供的 API Key）
-BP_API_KEY=你的API_KEY_BASE64
-
-# Base64 编码的 32 字节 Ed25519 私钥（交易所提供的 API Secret）
-# 注意：必须是 32 字节原始私钥的 Base64 编码
-BP_API_SECRET=你的API_SECRET_BASE64
-
-```
+参数基本上都在配置里，env.example里很详细，可以照着配置
 
 请去交易所注册API：https://support.backpack.exchange/support-docs/cn/jiao-yi-suo-1/zhang-hu-gong-neng/sheng-cheng-backpack-jiao-yi-suo-api-mi-yao
 
-## 超参数说明（硬编码）
-
-以下参数直接写在代码里，如需修改，请编辑对应文件并重新构建：
-
-- 交易对（ws 订阅）：`src/ws.rs` 中 `const MARKET_SYMBOL`
-- 策略参数：`src/strategy.rs` 中的
-  - `const MARKET_SYMBOL`
-  - `const ORDER_QUANTITY`
-  - `const SHORT_ORDER_TIMEOUT_SECS`
-  - `const CYCLE_COOLDOWN_SECS`
-- 启动时设置的账户杠杆：`src/main.rs` 中传入的 `"1.0"`

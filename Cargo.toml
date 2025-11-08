@@ -1,19 +1,17 @@
 [package]
-name = "backpackrust"
+name = "bp_maker_brush"
 version = "0.1.0"
-edition = "2024" # 按照你的要求使用 2024 edition
+edition = "2024"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-tokio-tungstenite = { version = "0.23", features = ["native-tls"] }
-futures-util = "0.3"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-dotenv = "0.15"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dotenvy = "0.15"
+time = { version = "0.3", features = ["macros", "formatting"] }
+ed25519-dalek = { version = "2", features = ["rand_core"] }
 base64 = "0.22"
-ed25519-dalek = { version = "2.1" } # 用于 Ed25519 签名
-chrono = "0.4"
-thiserror = "1.0"
-anyhow = "1.0"
-http = "1.1" # reqwest 需要
+tokio-tungstenite = { version = "0.23", features = ["rustls-tls-native-roots"] }
+futures = "0.3"
+anyhow = "1"
